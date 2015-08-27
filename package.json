@@ -1,0 +1,14 @@
+{
+  "name": "hapi-route-manager",
+  "version": "1.0.6",
+  "description": "(Under Development) Yet another route manager for versioned HAPI REST APIs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Matthew Apperson",
+  "license": "ISC",
+  "dependencies": {
+    "walk": "^2.3.9"
+  }
+}
