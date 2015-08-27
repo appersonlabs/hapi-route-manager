@@ -1,6 +1,6 @@
 {
   "name": "hapi-route-manager",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "(Under Development) Yet another route manager for versioned HAPI REST APIs",
   "main": "index.js",
   "scripts": {
