@@ -1,88 +1,112 @@
-var walk = require("walk"),
-    path = require("path");
+var walk = require('walk'),
+    path = require('path'),
+    verbs = require('http-verbs');
+
+
+function objectToRoutes(apiVersion, cleanRoute, routeVerbObject) {
+    var routes = [];
+
+    Object.keys(routeVerbObject).forEach((verb) => {
+        if(!verbs[verb]) return; // only allow legit http methods in :)
+
+        var routeObject = routeVerbObject[verb];
+
+        // Used for SDK creation by many plugins ;)
+        var nickname;
+        if (!routeObject.nickname) {
+            nickname = cleanRoute.replace(/\/([a-z])/g, function(g) { return g[1].toUpperCase(); });
+        } else {
+            nickname = routeObject.nickname;
+        }
+
+        routeObject.config = routeObject.config || {};
+        routeObject.config.plugins = routeObject.config.plugins || {};
+        routeObject.config.plugins['hapi-swaggered'] = {
+            custom: {}
+        };
+
+        routeObject.config.plugins['hapi-swaggered'].custom['x-swagger-js-method-name'] = nickname;
+
+        routeObject.method = verb;
+        routeObject.apiVersion = apiVersion;
+
+        routes.push(routeObject);
+    });
+
+    return routes
+}
 
 exports.register = function(server, options, next) {
-    console.log("Registering routes from " + options.directory + "...");
+    var versionRegex = /^[v][0-9]+?$/g;
 
-    var apiServer = options.select ? server.select(options.select) : server,
-        lastErr = null,
-        versions = {};
+    var versions = {};
 
     walk.walkSync(options.directory, {
         listeners: {
             file: function(root, fileStats, nextFile) {
-                if (fileStats.name.indexOf(".route.js") !== -1) {
+                if (fileStats.name.indexOf('.route.js') !== -1) {
 
                     try {
-                        var filename = root + "/" + fileStats.name,
-                            route = root.replace(options.directory, ""),
-                            routeObject = require(path.resolve(filename)),
-                            apiVersion = route.split("/")[1],
-                            cleanRoute = route.replace("/" + apiVersion + "/", ""),
-                            nickname;
+                        var route = `${root.replace(options.directory, '')}/${fileStats.name.replace('.route.js', '')}`;
+                        var apiVersion = route.split('/')[1].match(versionRegex)[0];
+                        var cleanRoute = route.replace('/' + apiVersion + '/', ''); // aka just no version info
+                        var filename = root + '/' + fileStats.name;
+                        var routeObject = require(path.resolve(filename));
                     } catch(e) {
+                        // $lab:coverage:off$
                         console.log(e);
+                        // $lab:coverage:on$
+
                     }
 
-                    // append the filenames route info
-                    route = route + "/" + fileStats.name.replace(".route.js", "");
-
-                    if (!routeObject.config || !routeObject.config.nickname) {
-                        if (fileStats.name.replace(".route.js", "") !== "index") {
-                            cleanRoute = cleanRoute + "/" + fileStats.name.replace(".route.js", "");
-                        }
-
-                        nickname = cleanRoute.replace(/\/([a-z])/g, function(g) { return g[1].toUpperCase(); });
-                    } else {
-                        nickname = routeObject.config.clientName;
-                        delete routeObject.config.clientName;
+                    // move from the hapi std config to the http verb based export object
+                    if(routeObject.handler && routeObject.method) {
+                        routeObject = {
+                            [routeObject.method]: routeObject
+                        };
                     }
 
-                    if (!versions[route]) {
-                        versions[route] = [];
+                    if (!versions[apiVersion]) {
+                        versions[apiVersion] = [];
                     }
 
-                    routeObject.config = routeObject.config || {};
-                    routeObject.config.plugins = routeObject.config.plugins || {};
-                    routeObject.config.plugins["hapi-swaggered"] = {
-                        custom: {}
-                    };
-                    if(nickname) {
-                        routeObject.config.plugins["hapi-swaggered"].custom['x-swagger-js-method-name'] = nickname;
+                    var routes = objectToRoutes(apiVersion, cleanRoute, routeObject);
+
+
+
+                    try {
+                        routes.forEach((routeObj) => {
+                            routeObj.filename = path.resolve(filename);
+                            routeObj.path = path.join(route, routeObj.route || '')
+                        });
+
+                        versions[apiVersion] = versions[apiVersion].concat(routes);
+                    } catch(e) {
+                        // $lab:coverage:off$
+                        console.log(e);
+                        // $lab:coverage:on$
                     }
-                    routeObject.apiVersion = apiVersion;
-                    routeObject.filename = path.resolve(filename);
-                    versions[route].push(routeObject);
                 }
 
                 nextFile();
             }
         }
     });
-    console.log(Object.keys(versions).length + " routes found. Loading now...");
 
-    Object.keys(versions).forEach(function(urlPath) {
-        versions[urlPath].forEach(function(route, index, routes) {
-            try {
-                if (route.config.tags) {
-                    route.config.tags = route.config.tags.concat([ "api", route.apiVersion ]);
-                } else {
-                    route.config.tags = [ "api", route.apiVersion ];
-                }
-                server.route({
-                    method: route.method,
-                    path: urlPath,
-                    handler: route.handler,
-                    config: route.config
-                });
-            } catch (e) {
-                console.log(e);
-                var error = "[ERROR] A duplicate route was detected with a " + route.method;
-                error += " request to " + path.join(urlPath, route.path || "")
-                error += " in the file " + route.filename;
-
-                throw error;
+    Object.keys(versions).forEach(function(version) {
+        versions[version].forEach(function(route) {
+            if (route.config.tags) {
+                route.config.tags = route.config.tags.concat([ 'api', route.apiVersion ]);
+            } else {
+                route.config.tags = [ 'api', route.apiVersion ];
             }
+
+            server.route({
+                method: route.method,
+                path: route.path,
+                handler: route.handler,
+                config: route.config
+            });
         });
     });
 
@@ -90,5 +114,5 @@ exports.register = function(server, options, next) {
 };
 
 exports.register.attributes = {
-    pkg: require("./package.json")
+    pkg: require('./package.json')
 };

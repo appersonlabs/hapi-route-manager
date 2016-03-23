@@ -1,14 +1,25 @@
 {
   "name": "hapi-route-manager",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "(Under Development) Yet another route manager for versioned HAPI REST APIs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/lab/bin/lab -f -r console -t 100 -m 3000 $(find tests -name '*.test.js')"
   },
   "author": "Matthew Apperson",
   "license": "ISC",
   "dependencies": {
+    "boom": "^3.1.2",
+    "http-verbs": "^1.0.0",
     "walk": "^2.3.9"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "code": "^2.1.1",
+    "eslint": "^2.4.0",
+    "hapi": "^13.2.1",
+    "joi": "^8.0.5",
+    "lab": "^10.3.0",
+    "mocha": "^2.4.5"
   }
 }
