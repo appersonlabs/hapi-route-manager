@@ -54,7 +54,7 @@ exports.register = function(server, options, next) {
                         var routeObject = require(path.resolve(filename));
                     } catch(e) {
                         // $lab:coverage:off$
-                        console.log(e);
+                        next(e);
                         // $lab:coverage:on$
 
                     }
@@ -77,13 +77,13 @@ exports.register = function(server, options, next) {
                     try {
                         routes.forEach((routeObj) => {
                             routeObj.filename = path.resolve(filename);
-                            routeObj.path = path.join(route, routeObj.route || '')
+                            routeObj.path = path.join(route, routeObj.path || '')
                         });
 
                         versions[apiVersion] = versions[apiVersion].concat(routes);
                     } catch(e) {
                         // $lab:coverage:off$
-                        console.log(e);
+                        next(e);
                         // $lab:coverage:on$
                     }
                 }

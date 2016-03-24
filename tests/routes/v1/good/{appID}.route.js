@@ -1,6 +1,6 @@
 var ListApps = {
     method: 'POST',
-    route: '/build',
+    path: '/build',
     handler: function(req, reply) {
         reply({success: true});
     }
